@@ -1,0 +1,69 @@
+{
+  "strategy": "zero_shot",
+  "prompt_prefix": "\n-- Create Guitar table\nCREATE TABLE Guitar (\n    guitar_id INTEGER PRIMARY KEY,\n    brand TEXT NOT NULL,\n    model TEXT NOT NULL,\n    type TEXT CHECK(type IN ('Electric', 'Acoustic', 'Bass')) NOT NULL,\n    price REAL NOT NULL,\n    in_stock INTEGER NOT NULL,\n    condition TEXT CHECK(condition IN ('New', 'Used', 'Damaged')) NOT NULL\n);\n\n-- Create Customer table\nCREATE TABLE Customer (\n    customer_id INTEGER PRIMARY KEY,\n    first_name TEXT NOT NULL,\n    last_name TEXT NOT NULL,\n    email TEXT,\n    phone TEXT\n);\n\n-- Create Sale table\nCREATE TABLE Sale (\n    sale_id INTEGER PRIMARY KEY,\n    guitar_id INTEGER,\n    customer_id INTEGER,\n    sale_date TEXT,\n    sale_price REAL,\n    FOREIGN KEY (guitar_id) REFERENCES Guitar(guitar_id),\n    FOREIGN KEY (customer_id) REFERENCES Customer(customer_id)\n);\n\n-- Create Staff table\nCREATE TABLE Staff (\n    staff_id INTEGER PRIMARY KEY,\n    first_name TEXT NOT NULL,\n    last_name TEXT NOT NULL,\n    role TEXT CHECK(role IN ('Sales', 'Manager', 'Technician')) NOT NULL\n);\n\n-- Create Repair table\nCREATE TABLE Repair (\n    repair_id INTEGER PRIMARY KEY,\n    guitar_id INTEGER,\n    staff_id INTEGER,\n    repair_date TEXT,\n    issue TEXT,\n    cost REAL,\n    FOREIGN KEY (guitar_id) REFERENCES Guitar(guitar_id),\n    FOREIGN KEY (staff_id) REFERENCES Staff(staff_id)\n);\n Give me a sqlite select statement that answers the question. Use the local time (not UTC) when filtering by date or time. Only respond with sqlite syntax. If there is an error do not explain it!",
+  "questionResults": [
+    {
+      "question": "What guitars are in stock?",
+      "sql": "\nSELECT * FROM Guitar WHERE in_stock > 0;\n",
+      "queryRawResponse": "[(1, 'Fender', 'Stratocaster', 'Electric', 1200.0, 5, 'New'), (2, 'Gibson', 'Les Paul', 'Electric', 2500.0, 2, 'New'), (3, 'Taylor', '314ce', 'Acoustic', 1800.0, 3, 'Used'), (4, 'Yamaha', 'FG800', 'Acoustic', 200.0, 10, 'New'), (5, 'Ibanez', 'SR300', 'Bass', 450.0, 1, 'Damaged')]",
+      "friendlyResponse": "We have the following guitars in stock:\n\n1. Fender Stratocaster - Electric ($1200) - New\n2. Gibson Les Paul - Electric ($2500) - New\n3. Taylor 314ce - Acoustic ($1800) - Used\n4. Yamaha FG800 - Acoustic ($200) - New\n5. Ibanez SR300 - Bass ($450) - Damaged",
+      "error": "None"
+    },
+    {
+      "question": "What is the average price of electric guitars?",
+      "sql": "\nSELECT AVG(price) AS average_price\nFROM Guitar\nWHERE type = 'Electric';\n",
+      "queryRawResponse": "[(1850.0,)]",
+      "friendlyResponse": "The average price of electric guitars is $1,850.",
+      "error": "None"
+    },
+    {
+      "question": "who bought guitars this month?",
+      "sql": "\nSELECT DISTINCT Customer.first_name, Customer.last_name\nFROM Sale\nJOIN Customer ON Sale.customer_id = Customer.customer_id\nWHERE strftime('%m', datetime(Sale.sale_date, 'localtime')) = strftime('%m', 'now', 'localtime')\nAND strftime('%Y', datetime(Sale.sale_date, 'localtime')) = strftime('%Y', 'now', 'localtime');\n",
+      "queryRawResponse": "[]",
+      "friendlyResponse": "No one has bought guitars this month.",
+      "error": "None"
+    },
+    {
+      "question": "What is the most expensive guitar?",
+      "sql": "\nSELECT * FROM Guitar ORDER BY price DESC LIMIT 1;\n",
+      "queryRawResponse": "[(2, 'Gibson', 'Les Paul', 'Electric', 2500.0, 2, 'New')]",
+      "friendlyResponse": "The most expensive guitar is a Gibson Les Paul electric guitar, priced at $2,500.",
+      "error": "None"
+    },
+    {
+      "question": "Which staff member have done the most repairs?",
+      "sql": "\nSELECT s.first_name, s.last_name, COUNT(r.repair_id) AS repair_count\nFROM Staff s\nJOIN Repair r ON s.staff_id = r.staff_id\nGROUP BY s.staff_id\nORDER BY repair_count DESC\nLIMIT 1;\n",
+      "queryRawResponse": "[('Dan', 'Brown', 2)]",
+      "friendlyResponse": "Dan Brown has done the most repairs, with a total of 2.",
+      "error": "None"
+    },
+    {
+      "question": "What customer spent the most money?",
+      "sql": "\nSELECT Customer.first_name, Customer.last_name, SUM(Sale.sale_price) AS total_spent\nFROM Sale\nJOIN Customer ON Sale.customer_id = Customer.customer_id\nGROUP BY Sale.customer_id\nORDER BY total_spent DESC\nLIMIT 1;\n",
+      "queryRawResponse": "[('Bob', 'Smith', 2400.0)]",
+      "friendlyResponse": "Bob Smith spent the most money, totaling $2400.",
+      "error": "None"
+    },
+    {
+      "question": "Which guitar brand is the most popular based on sales?",
+      "sql": "\nSELECT G.brand, COUNT(S.sale_id) AS sales_count\nFROM Sale S\nJOIN Guitar G ON S.guitar_id = G.guitar_id\nGROUP BY G.brand\nORDER BY sales_count DESC\nLIMIT 1;\n",
+      "queryRawResponse": "[('Taylor', 1)]",
+      "friendlyResponse": "Taylor is currently the top-selling guitar brand.",
+      "error": "None"
+    },
+    {
+      "question": "How many guitars were repaired this year?",
+      "sql": "\nSELECT COUNT(DISTINCT guitar_id) AS guitars_repaired_this_year\nFROM Repair\nWHERE strftime('%Y', repair_date) = strftime('%Y', 'now', 'localtime');\n",
+      "queryRawResponse": "[(0,)]",
+      "friendlyResponse": "Zero guitars were repaired this year.",
+      "error": "None"
+    },
+    {
+      "question": "What is the total guitar sales revenue?",
+      "sql": "\nSELECT SUM(sale_price) AS total_sales_revenue FROM Sale;\n",
+      "queryRawResponse": "[(5250.0,)]",
+      "friendlyResponse": "The total guitar sales revenue is $5,250.",
+      "error": "None"
+    }
+  ]
+}
